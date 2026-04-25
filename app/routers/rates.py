@@ -5,7 +5,7 @@ from sqlalchemy import func, case
 
 from app.core.auth import get_current_user, require_admin
 from app.db.database import get_db
-from app.models.models import User, Rate, Rate, VehicleType
+from app.models.models import User, Rate, VehicleType
 from app.schemas.schemas import (
     RateCreate,
     RateUpdate,

@@ -76,10 +76,6 @@ class Role(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
-    permissions = relationship(
-        "Permission", back_populates="role", secondary="role_permissions"
-    )
-
 
 class Permission(Base):
     __tablename__ = "permissions"
@@ -90,17 +86,6 @@ class Permission(Base):
     action = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
-
-    roles = relationship(
-        "Role", back_populates="permissions", secondary="role_permissions"
-    )
-
-
-class RolePermission(Base):
-    __tablename__ = "role_permissions"
-
-    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True)
-    permission_id = Column(Integer, ForeignKey("permissions.id"), primary_key=True)
 
 
 class Vehicle(Base):

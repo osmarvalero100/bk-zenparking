@@ -1,21 +1,10 @@
-"""Alembic seed script for initial data"""
+"""Database seeding script for initial data"""
 
-from alembic import context
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
-from app.db.database import Base
-from app.models.models import (
-    User,
-    Role,
-    Permission,
-    Rate,
-    VehicleType,
-    ParkingSpot,
-    SpotStatus,
-    UserRole,
-)
+from app.models.models import User, Rate, VehicleType, ParkingSpot, SpotStatus, UserRole
 from app.core.auth import get_password_hash
 
 
@@ -25,6 +14,7 @@ def seed_data():
     session = Session()
 
     try:
+        # Users
         admin = User(
             username="admin",
             email="admin@zenparking.com",
@@ -52,6 +42,7 @@ def seed_data():
         )
         session.add(auditor)
 
+        # Rates
         rates = [
             Rate(
                 name="Tarifa Carro Hora",
@@ -59,6 +50,7 @@ def seed_data():
                 rate_type="hourly",
                 price_per_minute=150,
                 free_minutes=5,
+                is_active=True,
             ),
             Rate(
                 name="Tarifa Moto Hora",
@@ -66,6 +58,7 @@ def seed_data():
                 rate_type="hourly",
                 price_per_minute=100,
                 free_minutes=5,
+                is_active=True,
             ),
             Rate(
                 name="Tarifa Bicicleta Hora",
@@ -73,6 +66,7 @@ def seed_data():
                 rate_type="hourly",
                 price_per_minute=50,
                 free_minutes=5,
+                is_active=True,
             ),
             Rate(
                 name="Tarifa Discapacitado",
@@ -80,11 +74,13 @@ def seed_data():
                 rate_type="hourly",
                 price_per_minute=0,
                 free_minutes=0,
+                is_active=True,
             ),
         ]
         for rate in rates:
             session.add(rate)
 
+        # Parking Spots
         spots_config = [
             ("A1", VehicleType.CAR, "A", 1, "1", 1, True),
             ("A2", VehicleType.CAR, "A", 1, "1", 2, True),
@@ -112,7 +108,10 @@ def seed_data():
             session.add(spot)
 
         session.commit()
-        print(" Seed data created successfully!")
+        print("Seed data created successfully!")
+        print("  - 3 users (admin, guardia1, auditor)")
+        print("  - 4 rates")
+        print("  - 10 parking spots")
 
     except Exception as e:
         session.rollback()
@@ -121,5 +120,5 @@ def seed_data():
         session.close()
 
 
-if context.is_offline_mode():
+if __name__ == "__main__":
     seed_data()

@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     DATABASE_HOST: str = "localhost"
-    DATABASE_PORT: int = 3306
+    DATABASE_PORT: int = 3305
     DATABASE_USER: str = "root"
-    DATABASE_PASSWORD: str = ""
-    DATABASE_NAME: str = "zenparking_db"
+    DATABASE_PASSWORD: str = "r00t"
+    DATABASE_NAME: str = "zen-parking"
 
     @property
     def DATABASE_URL(self) -> str:
