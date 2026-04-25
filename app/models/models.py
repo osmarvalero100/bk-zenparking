@@ -221,3 +221,23 @@ class AuditLog(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="audit_logs")
+
+
+class NotificationQueue(Base):
+    __tablename__ = "notification_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    notification_type = Column(String(50), nullable=False)
+    recipient_email = Column(String(100), nullable=False)
+    recipient_phone = Column(String(20), nullable=True)
+    subject = Column(String(200), nullable=True)
+    message = Column(Text, nullable=False)
+    status = Column(String(20), default="pending")
+    provider = Column(String(20), default="smtp")
+    attempts = Column(Integer, default=0)
+    max_attempts = Column(Integer, default=3)
+    last_error = Column(Text, nullable=True)
+    scheduled_at = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

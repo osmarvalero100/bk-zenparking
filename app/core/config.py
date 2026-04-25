@@ -43,5 +43,10 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 15
     MAX_LOGIN_ATTEMPTS: int = 5
 
+    EMAIL_PROVIDER: str = "smtp"
+    AWS_REGION: str = "us-east-1"
+    AWS_SES_ACCESS_KEY: str = ""
+    AWS_SES_SECRET_KEY: str = ""
+
 
 settings = Settings()

@@ -11,6 +11,7 @@ from app.routers import (
     blacklist,
     reports,
     system,
+    notifications,
 )
 
 api_router = APIRouter(prefix="/v1")
@@ -25,3 +26,4 @@ api_router.include_router(fines.router)
 api_router.include_router(blacklist.router)
 api_router.include_router(reports.router)
 api_router.include_router(system.router)
+api_router.include_router(notifications.router)
