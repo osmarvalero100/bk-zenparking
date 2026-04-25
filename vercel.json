@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/vercel.json",
-  "buildCommand": "pip install -r requirements.txt && PYTHONPATH=. python -c \"from app.db.database import engine, Base; from app.models.models import *; Base.metadata.create_all(bind=engine); print('Migrations completed')\"",
+  "buildCommand": "pip install -r requirements.txt",
   "devCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
   "installCommand": "pip install -r requirements.txt",
   "framework": "fastapi"
