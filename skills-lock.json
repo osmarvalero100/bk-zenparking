@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "fastapi-best-practices": {
+      "source": "ofershap/fastapi-best-practices",
+      "sourceType": "github",
+      "computedHash": "f0cd8883ae20acdab775420fe3d4fd9493751285d61eb65b284763cff5c470d6"
+    }
+  }
+}
