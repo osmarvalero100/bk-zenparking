@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/vercel.json",
+  "buildCommand": "pip install -r requirements.txt",
+  "devCommand": "uvicorn app.main:app --host 0.0.0.0 --port $PORT",
+  "installCommand": "pip install -r requirements.txt",
+  "framework": "fastapi",
+  "routes": [
+    {
+      "handle": ["filesystem"],
+      "src": "/(.*)"
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "https://openapi.org/schema.json",
+  "info": {
+    "title": "ZenParking API",
+    "description": "REST API for parking management system",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root endpoint",
+        "responses": {
+          "200": {
+            "description": "Welcome message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {"type": "string"},
+                    "version": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Health status"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "User login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {"type": "string"},
+                  "password": {"type": "string"}
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "access_token": {"type": "string"},
+                    "refresh_token": {"type": "string"},
+                    "token_type": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sessions/entry": {
+      "post": {
+        "summary": "Vehicle entry",
+        "tags": ["Parking Sessions"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plate": {"type": "string"},
+                  "spot_id": {"type": "integer"}
+                },
+                "required": ["plate"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Entry registered"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {"name": "Authentication", "description": "User authentication endpoints"},
+    {"name": "Users", "description": "User management endpoints"},
+    {"name": "Vehicles", "description": "Vehicle management endpoints"},
+    {"name": "Parking Sessions", "description": "Parking session endpoints"},
+    {"name": "Parking Spots", "description": "Parking spot management endpoints"},
+    {"name": "Rates", "description": "Rate configuration endpoints"},
+    {"name": "Fines", "description": "Fine management endpoints"},
+    {"name": "Blacklist", "description": "Blacklist management endpoints"},
+    {"name": "Reports", "description": "Reporting endpoints"}
+  ]
+}
