@@ -9,6 +9,7 @@ from app.core.auth import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     get_current_user,
     validate_password_strength,
 )
@@ -114,3 +115,44 @@ async def refresh_token(current_user: Annotated[User, Depends(get_current_user)]
     access_token = create_access_token(data={"sub": current_user.id})
     refresh_token = create_refresh_token(data={"sub": current_user.id})
     return TokenOut(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/request-password-reset", response_model=MessageOut)
+async def request_password_reset(email: str, db: Annotated[Session, Depends(get_db)]):
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        return MessageOut(detail="If email exists, reset instructions sent")
+
+    reset_token = create_reset_token(data={"sub": user.id, "email": user.email})
+
+    return MessageOut(
+        detail=f"Password reset token: {reset_token[:20]}... (in production, email would be sent)"
+    )
+
+
+@router.post("/reset-password", response_model=MessageOut)
+async def reset_password(
+    token: str, new_password: str, db: Annotated[Session, Depends(get_db)]
+):
+    payload = decode_token(token)
+    if payload.get("type") != "reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
+    is_valid, message = validate_password_strength(new_password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Weak password: {message}"
+        )
+
+    user = db.query(User).filter(User.id == payload.get("sub")).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    user.password_hash = get_password_hash(new_password)
+    db.commit()
+
+    return MessageOut(detail="Password reset successfully")
