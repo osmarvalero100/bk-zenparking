@@ -10,6 +10,7 @@ from app.core.auth import (
     create_access_token,
     create_refresh_token,
     get_current_user,
+    validate_password_strength,
 )
 from app.core.config import settings
 from app.db.database import get_db
@@ -36,6 +37,12 @@ async def register(user_data: UserCreate, db: Annotated[Session, Depends(get_db)
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists"
+        )
+
+    is_valid, message = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Password weak: {message}"
         )
 
     password_hash = get_password_hash(user_data.password)

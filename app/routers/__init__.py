@@ -10,6 +10,7 @@ from app.routers import (
     fines,
     blacklist,
     reports,
+    system,
 )
 
 api_router = APIRouter(prefix="/v1")
@@ -23,3 +24,4 @@ api_router.include_router(rates.router)
 api_router.include_router(fines.router)
 api_router.include_router(blacklist.router)
 api_router.include_router(reports.router)
+api_router.include_router(system.router)

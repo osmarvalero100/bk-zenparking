@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Annotated, Optional
+import re
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -13,6 +14,28 @@ from app.models.models import User, UserRole
 
 pwd_context = CryptContext(schemes=["bcrypt", "argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+
+def validate_password_strength(password: str) -> tuple[bool, str]:
+    if len(password) < settings.MIN_PASSWORD_LENGTH:
+        return (
+            False,
+            f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters",
+        )
+
+    if settings.REQUIRES_UPPERCASE and not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter"
+
+    if settings.REQUIRES_LOWERCASE and not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter"
+
+    if settings.REQUIRES_NUMBERS and not re.search(r"\d", password):
+        return False, "Password must contain at least one number"
+
+    if settings.REQUIRES_SPECIAL and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        return False, "Password must contain at least one special character"
+
+    return True, "Password is valid"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

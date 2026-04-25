@@ -73,6 +73,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class PasswordStrengthResponse(BaseModel):
+    is_valid: bool
+    message: str
+
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
