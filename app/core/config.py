@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@zenparking.com"
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000", "https://fe-zenparking.vercel.app"]
 
     MIN_PASSWORD_LENGTH: int = 8
     REQUIRES_UPPERCASE: bool = True
