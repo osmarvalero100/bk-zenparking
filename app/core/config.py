@@ -19,7 +19,10 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
-        return f"mysql+pymysql://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}?ssl_verify_cert=true&ssl_verify_identity=true"
+        base_url = f"mysql+pymysql://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+        if self.DATABASE_HOST not in ("localhost", "127.0.0.1"):
+            base_url += "?ssl_verify_cert=true&ssl_verify_identity=true"
+        return base_url
 
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
