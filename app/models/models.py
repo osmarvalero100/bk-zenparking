@@ -68,26 +68,6 @@ class User(Base):
     )
 
 
-class Role(Base):
-    __tablename__ = "roles"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False)
-    description = Column(Text, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
-
-
-class Permission(Base):
-    __tablename__ = "permissions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
-    resource = Column(String(50), nullable=False)
-    action = Column(String(50), nullable=False)
-    description = Column(Text, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
-
-
 class Vehicle(Base):
     __tablename__ = "vehicles"
 
