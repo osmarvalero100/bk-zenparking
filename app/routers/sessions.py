@@ -148,38 +148,6 @@ async def get_dashboard_statistics(
     )
 
 
-@router.get("/{session_id}", response_model=ParkingSessionOut)
-async def get_session(
-    session_id: int,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    session = db.query(ParkingSession).filter(ParkingSession.id == session_id).first()
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
-        )
-    return session
-
-
-@router.get("/ticket/{ticket_number}", response_model=ParkingSessionOut)
-async def get_session_by_ticket(
-    ticket_number: str,
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    session = (
-        db.query(ParkingSession)
-        .filter(ParkingSession.ticket_number == ticket_number)
-        .first()
-    )
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
-        )
-    return session
-
-
 @router.get("/search")
 async def search_session(
     db: Annotated[Session, Depends(get_db)],
@@ -218,8 +186,41 @@ async def search_session(
                 return session
 
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="No active session found"
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="No active session found",
     )
+
+
+@router.get("/{session_id}", response_model=ParkingSessionOut)
+async def get_session(
+    session_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    session = db.query(ParkingSession).filter(ParkingSession.id == session_id).first()
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    return session
+
+
+@router.get("/ticket/{ticket_number}", response_model=ParkingSessionOut)
+async def get_session_by_ticket(
+    ticket_number: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    session = (
+        db.query(ParkingSession)
+        .filter(ParkingSession.ticket_number == ticket_number)
+        .first()
+    )
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    return session
 
 
 @router.post(
