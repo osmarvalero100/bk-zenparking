@@ -82,19 +82,19 @@ SECRET_KEY=your-secret-key-change-in-production
 CREATE DATABASE zenparking_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 5. Ejecutar migraciones
+### 5. Ejecutar migraciones y seed
+
+Las migraciones se ejecutan automáticamente al iniciar la app, o manually:
 
 ```bash
-alembic upgrade head
+# Crear tablas
+PYTHONPATH=. python3 -c "from app.db.database import engine, Base; from app.models.models import *; Base.metadata.create_all(bind=engine); print('Tablas creadas')"
+
+# Poblar datos iniciales (seed)
+PYTHONPATH=. python3 alembic/seed.py
 ```
 
-### 6. Poblar datos iniciales (seed)
-
-```bash
-python alembic/seed.py
-```
-
-### 7. Iniciar servidor
+### 6. Iniciar servidor
 
 ```bash
 uvicorn app.main:app --reload
