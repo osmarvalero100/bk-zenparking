@@ -88,10 +88,10 @@ Las migraciones se ejecutan automáticamente al iniciar la app, o manually:
 
 ```bash
 # Crear tablas
-PYTHONPATH=. python3 -c "from app.db.database import engine, Base; from app.models.models import *; Base.metadata.create_all(bind=engine); print('Tablas creadas')"
+PYTHONPATH=. python -c "from app.db.database import engine, Base; from app.models.models import *; Base.metadata.create_all(bind=engine); print('Tablas creadas')"
 
 # Poblar datos iniciales (seed)
-PYTHONPATH=. python3 alembic/seed.py
+PYTHONPATH=. python alembic/seed.py
 ```
 
 ### 6. Iniciar servidor

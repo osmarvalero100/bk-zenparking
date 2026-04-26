@@ -131,3 +131,6 @@ def seed_data():
         print(f"Error seeding data: {e}")
     finally:
         session.close()
+
+
+seed_data()
