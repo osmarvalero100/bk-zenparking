@@ -182,40 +182,43 @@ async def get_session_by_ticket(
 
 @router.get("/search")
 async def search_session(
-    plate: str = None,
-    ticket: str = None,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
+    plate: str = None,
+    ticket: str = None,
 ):
     """Search session by plate or ticket number"""
     if not plate and not ticket:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide plate or ticket parameter"
+            detail="Provide plate or ticket parameter",
         )
-    
+
     if ticket:
-        session = db.query(ParkingSession).filter(
-            ParkingSession.ticket_number == ticket
-        ).first()
+        session = (
+            db.query(ParkingSession)
+            .filter(ParkingSession.ticket_number == ticket)
+            .first()
+        )
         if session:
             return session
-    
+
     if plate:
-        vehicle = db.query(Vehicle).filter(
-            Vehicle.plate == plate.upper()
-        ).first()
+        vehicle = db.query(Vehicle).filter(Vehicle.plate == plate.upper()).first()
         if vehicle:
-            session = db.query(ParkingSession).filter(
-                ParkingSession.vehicle_id == vehicle.id,
-                ParkingSession.exit_time == None
-            ).first()
+            session = (
+                db.query(ParkingSession)
+                .filter(
+                    ParkingSession.vehicle_id == vehicle.id,
+                    ParkingSession.exit_time == None,
+                )
+                .first()
+            )
             if session:
                 return session
-    
+
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="No active session found"
+        status_code=status.HTTP_404_NOT_FOUND, detail="No active session found"
     )
 
 
