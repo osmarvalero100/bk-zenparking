@@ -118,16 +118,34 @@ async def refresh_token(current_user: Annotated[User, Depends(get_current_user)]
 
 
 @router.post("/request-password-reset", response_model=MessageOut)
-async def request_password_reset(email: str, db: Annotated[Session, Depends(get_db)]):
+async def request_password_reset(
+    email: str,
+    db: Annotated[Session, Depends(get_db)],
+):
     user = db.query(User).filter(User.email == email).first()
     if not user:
         return MessageOut(detail="If email exists, reset instructions sent")
 
-    reset_token = create_reset_token(data={"sub": user.id, "email": user.email})
+    reset_token = create_reset_token(data={"sub": str(user.id), "email": user.email})
 
-    return MessageOut(
-        detail=f"Password reset token: {reset_token[:20]}... (in production, email would be sent)"
+    # Send email using configured provider
+    from app.services.email import get_email_provider
+
+    provider = get_email_provider()
+
+    success, error = provider.send(
+        user.email,
+        "Password Reset - ZenParking",
+        f"Use this token to reset your password: {reset_token}\n\n"
+        "In production, this would be a link to your reset form.",
     )
+
+    if success:
+        return MessageOut(detail="Password reset instructions sent")
+    else:
+        # Log error but don't expose
+        print(f"Email send failed: {error}")
+        return MessageOut(detail="If email exists, reset instructions sent")
 
 
 @router.post("/reset-password", response_model=MessageOut)
