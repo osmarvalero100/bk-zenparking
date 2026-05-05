@@ -48,6 +48,35 @@ class GmailProvider(EmailProvider):
             return False, str(e)
 
 
+class AWSSESSMTPProvider(EmailProvider):
+    def __init__(self):
+        self.host = settings.SMTP_HOST
+        self.port = settings.SMTP_PORT
+        self.username = settings.SMTP_USER
+        self.password = settings.SMTP_PASSWORD
+        self.from_email = settings.SMTP_FROM
+
+    def send(
+        self, to_email: str, subject: str, message: str
+    ) -> tuple[bool, Optional[str]]:
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = self.from_email
+            msg["To"] = to_email
+            msg["Subject"] = subject
+
+            msg.attach(MIMEText(message, "html", "utf-8"))
+
+            with smtplib.SMTP(self.host, self.port) as server:
+                server.starttls()
+                server.login(self.username, self.password)
+                server.send_message(msg)
+
+            return True, None
+        except Exception as e:
+            return False, str(e)
+
+
 class AWSSESProvider(EmailProvider):
     def __init__(self):
         self.region = settings.AWS_REGION
@@ -97,6 +126,8 @@ def get_email_provider() -> EmailProvider:
 
     if provider == "gmail":
         return GmailProvider()
+    elif provider == "aws_ses_smtp":
+        return AWSSESSMTPProvider()
     elif provider == "aws_ses":
         return AWSSESProvider()
     elif provider == "console":

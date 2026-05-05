@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from app.core.auth import (
     create_access_token,
     create_refresh_token,
     create_reset_token,
+    decode_token,
     get_current_user,
     validate_password_strength,
 )
@@ -121,6 +122,7 @@ async def refresh_token(current_user: Annotated[User, Depends(get_current_user)]
 async def request_password_reset(
     email: str,
     db: Annotated[Session, Depends(get_db)],
+    frontend_url: Optional[str] = None,
 ):
     user = db.query(User).filter(User.email == email).first()
     if not user:
@@ -133,11 +135,16 @@ async def request_password_reset(
 
     provider = get_email_provider()
 
+    if frontend_url:
+        reset_link = f"{frontend_url.rstrip('/')}?token={reset_token}"
+        email_body = f"Click the following link to reset your password:\n\n{reset_link}\n\nIf you didn't request this, please ignore this email."
+    else:
+        email_body = f"Use this token to reset your password: {reset_token}\n\nIn production, this would be a link to your reset form."
+
     success, error = provider.send(
         user.email,
         "Password Reset - ZenParking",
-        f"Use this token to reset your password: {reset_token}\n\n"
-        "In production, this would be a link to your reset form.",
+        email_body,
     )
 
     if success:
@@ -164,7 +171,7 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Weak password: {message}"
         )
 
-    user = db.query(User).filter(User.id == payload.get("sub")).first()
+    user = db.query(User).filter(User.id == int(payload.get("sub"))).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
