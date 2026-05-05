@@ -253,7 +253,7 @@ async def vehicle_entry(
     if blacklist:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Vehicle is blacklisted: {blacklist.reason}",
+            detail=f"Vehículo en lista negra: {blacklist.reason}",
         )
 
     active_session = (
