@@ -148,7 +148,7 @@ async def get_dashboard_statistics(
     )
 
 
-@router.get("/search")
+@router.get("/search", response_model=ParkingSessionOut)
 async def search_session(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
@@ -162,16 +162,16 @@ async def search_session(
             detail="Provide plate or ticket parameter",
         )
 
+    session = None
+
     if ticket:
         session = (
             db.query(ParkingSession)
             .filter(ParkingSession.ticket_number == ticket)
             .first()
         )
-        if session:
-            return session
 
-    if plate:
+    if not session and plate:
         vehicle = db.query(Vehicle).filter(Vehicle.plate == plate.upper()).first()
         if vehicle:
             session = (
@@ -182,13 +182,32 @@ async def search_session(
                 )
                 .first()
             )
-            if session:
-                return session
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="No active session found",
-    )
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active session found",
+        )
+
+    # Calculate duration and total_amount if session is active
+    if session.exit_time is None:
+        from datetime import datetime
+
+        now = datetime.now()
+        duration = int((now - session.entry_time).total_seconds() / 60)
+        session.duration_minutes = duration
+
+        vehicle = db.query(Vehicle).filter(Vehicle.id == session.vehicle_id).first()
+        if vehicle and vehicle.is_resident:
+            session.total_amount = 0
+        elif vehicle:
+            session.total_amount = calculate_parking_fee(
+                vehicle.vehicle_type, duration, db
+            )
+        else:
+            session.total_amount = 0
+
+    return session
 
 
 @router.get("/{session_id}", response_model=ParkingSessionOut)
