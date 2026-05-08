@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@zenparking.com"
 
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000", "https://fe-zenparking.vercel.app"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://fe-zenparking.vercel.app",
+    ]
 
     MIN_PASSWORD_LENGTH: int = 8
     REQUIRES_UPPERCASE: bool = True
@@ -50,6 +54,8 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-1"
     AWS_SES_ACCESS_KEY: str = ""
     AWS_SES_SECRET_KEY: str = ""
+
+    TIMEZONE: str = "America/Bogota"
 
 
 settings = Settings()

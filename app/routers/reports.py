@@ -1,12 +1,13 @@
 from typing import Annotated, List
 from datetime import datetime, timedelta
-from io import BytesIO
+from io import StringIO
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import csv
 
 from app.core.auth import get_current_user, require_admin
+from app.core.timezone import now as tz_now
 from app.db.database import get_db
 from app.models.models import User, ParkingSession, Vehicle, ParkingSpot, Fine, AuditLog
 from app.schemas.schemas import (
@@ -33,7 +34,7 @@ async def get_daily_movements_report(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
     else:
-        target_date = datetime.now().date()
+        target_date = tz_now().date()
 
     start_datetime = datetime.combine(target_date, datetime.min.time())
     end_datetime = start_datetime + timedelta(days=1)
@@ -94,7 +95,7 @@ async def get_daily_movements_csv(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
     else:
-        target_date = datetime.now().date()
+        target_date = tz_now().date()
 
     start_datetime = datetime.combine(target_date, datetime.min.time())
     end_datetime = start_datetime + timedelta(days=1)
@@ -108,7 +109,7 @@ async def get_daily_movements_csv(
         .all()
     )
 
-    output = BytesIO()
+    output = StringIO()
     writer = csv.writer(output)
     writer.writerow(
         [
@@ -143,7 +144,7 @@ async def get_daily_movements_csv(
     output.seek(0)
 
     return StreamingResponse(
-        iter([output.getvalue()]),
+        iter([output.getvalue().encode()]),
         media_type="text/csv",
         headers={
             "Content-Disposition": f"attachment; filename=movements_{target_date}.csv"
@@ -187,9 +188,9 @@ async def get_revenue_summary(
     end_date: datetime = None,
 ):
     if not start_date:
-        start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = tz_now().replace(hour=0, minute=0, second=0, microsecond=0)
     if not end_date:
-        end_date = datetime.now()
+        end_date = tz_now()
 
     from sqlalchemy import func
 
@@ -243,9 +244,9 @@ async def get_spots_utilization(
     end_date: datetime = None,
 ):
     if not start_date:
-        start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = tz_now().replace(hour=0, minute=0, second=0, microsecond=0)
     if not end_date:
-        end_date = datetime.now()
+        end_date = tz_now()
 
     from sqlalchemy import func
 

@@ -1,10 +1,11 @@
 from typing import Annotated
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.auth import get_current_user
+from app.core.timezone import now as tz_now, localize
 from app.db.database import get_db
 from app.models.models import (
     User,
@@ -34,7 +35,9 @@ router = APIRouter(prefix="/sessions", tags=["Parking Sessions"])
 
 
 def generate_ticket_number():
-    return f"TKT{datetime.now().strftime('%Y%m%d')}{''.join(random.choices(string.digits, k=6))}"
+    return (
+        f"TKT{tz_now().strftime('%Y%m%d')}{''.join(random.choices(string.digits, k=6))}"
+    )
 
 
 def calculate_parking_fee(
@@ -45,8 +48,8 @@ def calculate_parking_fee(
     rate = (
         db.query(Rate)
         .filter(Rate.vehicle_type == vehicle_type, Rate.is_active == True)
-        .filter((Rate.valid_from == None) | (Rate.valid_from <= datetime.now()))
-        .filter((Rate.valid_until == None) | (Rate.valid_until >= datetime.now()))
+        .filter((Rate.valid_from == None) | (Rate.valid_from <= tz_now()))
+        .filter((Rate.valid_until == None) | (Rate.valid_until >= tz_now()))
         .first()
     )
 
@@ -100,7 +103,7 @@ async def get_dashboard_statistics(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = tz_now().replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today + timedelta(days=1)
 
     total_spots = db.query(ParkingSpot).count()
@@ -191,10 +194,8 @@ async def search_session(
 
     # Calculate duration and total_amount if session is active
     if session.exit_time is None:
-        from datetime import datetime
-
-        now = datetime.now()
-        duration = int((now - session.entry_time).total_seconds() / 60)
+        now = tz_now()
+        duration = int((now - localize(session.entry_time)).total_seconds() / 60)
         session.duration_minutes = duration
 
         vehicle = db.query(Vehicle).filter(Vehicle.id == session.vehicle_id).first()
@@ -360,11 +361,11 @@ async def vehicle_exit(
     if pending_fines:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vehicle has pending fines. Cannot exit.",
+            detail="El vehículo tiene multas pendientes. No puede salir.",
         )
 
-    exit_time = datetime.now()
-    duration = int((exit_time - session.entry_time).total_seconds() / 60)
+    exit_time = tz_now()
+    duration = int((exit_time - localize(session.entry_time)).total_seconds() / 60)
 
     vehicle = db.query(Vehicle).filter(Vehicle.id == session.vehicle_id).first()
 

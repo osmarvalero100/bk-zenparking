@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user, require_role
+from app.core.timezone import now as tz_now
 from app.db.database import get_db
 from app.models.models import User, UserRole, Fine, FineType, Vehicle
 from app.schemas.schemas import (
@@ -92,7 +93,7 @@ async def pay_fine(
         )
 
     fine.status = "paid"
-    fine.paid_at = datetime.now()
+    fine.paid_at = tz_now()
     db.commit()
 
     return MessageOut(detail="Fine paid successfully")

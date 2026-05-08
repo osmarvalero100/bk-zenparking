@@ -14,6 +14,7 @@ from app.core.auth import (
     get_current_user,
     validate_password_strength,
 )
+from app.core.timezone import now as tz_now, localize
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.models import User, UserRole, AuditLog
@@ -78,7 +79,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if user.locked_until and user.locked_until > datetime.now():
+    if user.locked_until and localize(user.locked_until) > tz_now():
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
             detail="Account is locked. Try again later.",
@@ -87,7 +88,7 @@ async def login(
     if not verify_password(form_data.password, user.password_hash):
         user.failed_attempts += 1
         if user.failed_attempts >= settings.MAX_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.now()
+            user.locked_until = tz_now()
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -97,7 +98,7 @@ async def login(
 
     user.failed_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now()
+    user.last_login = tz_now()
     db.commit()
 
     access_token = create_access_token(data={"sub": user.id})
