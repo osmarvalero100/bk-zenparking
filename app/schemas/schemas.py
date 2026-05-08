@@ -240,6 +240,14 @@ class FineCreate(FineBase):
     photo_url: Optional[str] = None
 
 
+class FineUpdate(BaseModel):
+    fine_type: Optional[FineType] = None
+    amount: Optional[float] = None
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    status: Optional[str] = None
+
+
 class FineOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

@@ -11,6 +11,7 @@ from app.db.database import get_db
 from app.models.models import User, UserRole, Fine, FineType, Vehicle
 from app.schemas.schemas import (
     FineCreate,
+    FineUpdate,
     FineOut,
     MessageOut,
 )
@@ -123,6 +124,48 @@ async def pay_fine(
     )
 
     return MessageOut(detail="Fine paid successfully")
+
+
+@router.put("/{fine_id}", response_model=FineOut)
+async def update_fine(
+    fine_id: int,
+    fine_data: FineUpdate,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    fine = db.query(Fine).filter(Fine.id == fine_id).first()
+    if not fine:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Fine not found"
+        )
+
+    if fine_data.fine_type is not None:
+        fine.fine_type = fine_data.fine_type
+    if fine_data.amount is not None:
+        fine.amount = fine_data.amount
+    if fine_data.description is not None:
+        fine.description = fine_data.description
+    if fine_data.photo_url is not None:
+        fine.photo_url = fine_data.photo_url
+    if fine_data.status is not None:
+        fine.status = fine_data.status
+
+    db.commit()
+    db.refresh(fine)
+
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="multa",
+        resource_id=fine.id,
+        details=f"Se actualizó la multa #{fine.id}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return fine
 
 
 @router.delete("/{fine_id}", response_model=MessageOut)
