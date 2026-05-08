@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.audit import log_action
 from sqlalchemy import func
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, require_operator
 from app.core.timezone import now as tz_now, localize
 from app.db.database import get_db
 from app.services.parking import calculate_parking_fee, compute_session_totals
@@ -209,7 +209,7 @@ async def vehicle_entry(
     session_data: ParkingSessionCreate,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     vehicle = (
         db.query(Vehicle).filter(Vehicle.plate == session_data.plate.upper()).first()
@@ -312,7 +312,7 @@ async def vehicle_exit(
     exit_data: ParkingSessionEnd,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     session = db.query(ParkingSession).filter(ParkingSession.id == session_id).first()
     if not session:

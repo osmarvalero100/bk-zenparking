@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.audit import log_action
 
-from app.core.auth import get_current_user, require_role
+from app.core.auth import get_current_user, require_role, require_operator
 from app.core.timezone import now as tz_now
 from app.db.database import get_db
 from app.models.models import User, UserRole, Fine, FineType, Vehicle
@@ -54,7 +54,7 @@ async def create_fine(
     fine_data: FineCreate,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     vehicle = db.query(Vehicle).filter(Vehicle.id == fine_data.vehicle_id).first()
     if not vehicle:
@@ -95,7 +95,7 @@ async def pay_fine(
     fine_id: int,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     fine = db.query(Fine).filter(Fine.id == fine_id).first()
     if not fine:
@@ -132,7 +132,7 @@ async def update_fine(
     fine_data: FineUpdate,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     fine = db.query(Fine).filter(Fine.id == fine_id).first()
     if not fine:

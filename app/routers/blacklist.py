@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.audit import log_action
-from app.core.auth import get_current_user, require_admin
+from app.core.auth import get_current_user, require_admin, require_operator
 from app.db.database import get_db
 from app.models.models import User, Blacklist, Vehicle
 from app.schemas.schemas import (
@@ -51,7 +51,7 @@ async def add_to_blacklist(
     blacklist_data: BlacklistCreate,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     vehicle = (
         db.query(Vehicle).filter(Vehicle.plate == blacklist_data.plate.upper()).first()

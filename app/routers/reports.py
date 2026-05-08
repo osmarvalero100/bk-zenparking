@@ -6,7 +6,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import csv
 
-from app.core.auth import get_current_user, require_admin
+from app.core.auth import get_current_user, require_admin, require_role
+from app.models.models import UserRole
 from app.core.timezone import now as tz_now
 from app.db.database import get_db
 from app.models.models import User, ParkingSession, Vehicle, ParkingSpot, Fine, AuditLog
@@ -155,7 +156,9 @@ async def get_daily_movements_csv(
 @router.get("/audit-logs", response_model=List[AuditLogOut])
 async def get_audit_logs(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_admin)],
+    current_user: Annotated[
+        User, Depends(require_role(UserRole.ADMIN, UserRole.AUDITOR))
+    ],
     skip: int = 0,
     limit: int = 100,
     user_id: int = None,

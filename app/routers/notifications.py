@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user, require_admin
+from app.core.auth import get_current_user, require_admin, require_operator
 from app.db.database import get_db
 from app.models.models import User, Vehicle, ParkingSession
 from app.services.email import send_notification, process_queue
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 async def notify_vehicle_entry(
     session_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
     background_tasks: BackgroundTasks,
 ):
     session = db.query(ParkingSession).filter(ParkingSession.id == session_id).first()
@@ -52,7 +52,7 @@ async def notify_vehicle_entry(
 @router.post("/monthly-expiring")
 async def notify_monthly_expiring(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
     days_before: int = 5,
 ):
     from app.models.models import Rate
@@ -92,7 +92,7 @@ async def notify_monthly_expiring(
 async def notify_time_exceeded(
     session_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_operator)],
 ):
     session = db.query(ParkingSession).filter(ParkingSession.id == session_id).first()
     if not session:
