@@ -1,7 +1,9 @@
 from typing import Annotated
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+
+from app.core.audit import log_action
 
 from app.core.auth import get_current_user, require_role
 from app.core.timezone import now as tz_now
@@ -49,6 +51,7 @@ async def get_fine(
 @router.post("/", response_model=FineOut, status_code=status.HTTP_201_CREATED)
 async def create_fine(
     fine_data: FineCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -72,12 +75,24 @@ async def create_fine(
     db.commit()
     db.refresh(fine)
 
+    log_action(
+        db,
+        user=current_user,
+        action="crear",
+        resource="multa",
+        resource_id=fine.id,
+        details=f"Se creó multa de ${fine.amount:.0f} al vehículo placa '{vehicle.plate}' - {fine.description}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return fine
 
 
 @router.patch("/{fine_id}/pay", response_model=MessageOut)
 async def pay_fine(
     fine_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -96,12 +111,24 @@ async def pay_fine(
     fine.paid_at = tz_now()
     db.commit()
 
+    log_action(
+        db,
+        user=current_user,
+        action="pagar",
+        resource="multa",
+        resource_id=fine.id,
+        details=f"Multa pagada - ${fine.amount:.0f}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return MessageOut(detail="Fine paid successfully")
 
 
 @router.delete("/{fine_id}", response_model=MessageOut)
 async def delete_fine(
     fine_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_role(UserRole.ADMIN))],
 ):
@@ -113,5 +140,16 @@ async def delete_fine(
 
     db.delete(fine)
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="eliminar",
+        resource="multa",
+        resource_id=fine.id,
+        details=f"Se eliminó la multa #{fine.id}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="Fine deleted successfully")

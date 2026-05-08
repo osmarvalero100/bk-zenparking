@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -17,12 +16,11 @@ from app.core.auth import (
 from app.core.timezone import now as tz_now, localize
 from app.core.config import settings
 from app.db.database import get_db
-from app.models.models import User, UserRole, AuditLog
+from app.models.models import User, UserRole
 from app.schemas.schemas import (
     UserCreate,
     UserOut,
     TokenOut,
-    LoginRequest,
     MessageOut,
 )
 
@@ -108,14 +106,21 @@ async def login(
 
 
 @router.post("/logout", response_model=MessageOut)
-async def logout(current_user: Annotated[User, Depends(get_current_user)]):
-    return MessageOut(detail="Logged out successfully")
+async def logout(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    return MessageOut(detail="Sesión cerrada exitosamente")
 
 
 @router.post("/refresh", response_model=TokenOut)
-async def refresh_token(current_user: Annotated[User, Depends(get_current_user)]):
+async def refresh_token(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
     access_token = create_access_token(data={"sub": current_user.id})
     refresh_token = create_refresh_token(data={"sub": current_user.id})
+
     return TokenOut(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -127,7 +132,7 @@ async def request_password_reset(
 ):
     user = db.query(User).filter(User.email == email).first()
     if not user:
-        return MessageOut(detail="If email exists, reset instructions sent")
+        return MessageOut(detail="Si el correo existe, se enviaron las instrucciones")
 
     reset_token = create_reset_token(data={"sub": str(user.id), "email": user.email})
 
@@ -138,47 +143,49 @@ async def request_password_reset(
 
     if frontend_url:
         reset_link = f"{frontend_url.rstrip('/')}?token={reset_token}"
-        email_body = f"Click the following link to reset your password:\n\n{reset_link}\n\nIf you didn't request this, please ignore this email."
+        email_body = f"Haga clic en el siguiente enlace para restablecer su contraseña:\n\n{reset_link}\n\nSi no solicitó esto, ignore este correo."
     else:
-        email_body = f"Use this token to reset your password: {reset_token}\n\nIn production, this would be a link to your reset form."
+        email_body = f"Use este token para restablecer su contraseña: {reset_token}\n\nEn producción, esto sería un enlace a su formulario de restablecimiento."
 
     success, error = provider.send(
         user.email,
-        "Password Reset - ZenParking",
+        "Restablecimiento de Contraseña - ZenParking",
         email_body,
     )
 
     if success:
-        return MessageOut(detail="Password reset instructions sent")
+        return MessageOut(detail="Instrucciones de restablecimiento enviadas")
     else:
-        # Log error but don't expose
         print(f"Email send failed: {error}")
-        return MessageOut(detail="If email exists, reset instructions sent")
+        return MessageOut(detail="Si el correo existe, se enviaron las instrucciones")
 
 
 @router.post("/reset-password", response_model=MessageOut)
 async def reset_password(
-    token: str, new_password: str, db: Annotated[Session, Depends(get_db)]
+    token: str,
+    new_password: str,
+    db: Annotated[Session, Depends(get_db)],
 ):
     payload = decode_token(token)
     if payload.get("type") != "reset":
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token inválido"
         )
 
     is_valid, message = validate_password_strength(new_password)
     if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Weak password: {message}"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Contraseña débil: {message}",
         )
 
     user = db.query(User).filter(User.id == int(payload.get("sub"))).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
     user.password_hash = get_password_hash(new_password)
     db.commit()
 
-    return MessageOut(detail="Password reset successfully")
+    return MessageOut(detail="Contraseña restablecida exitosamente")

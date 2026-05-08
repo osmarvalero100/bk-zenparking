@@ -1,8 +1,9 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 
+from app.core.audit import log_action
 from app.core.auth import get_current_user, require_admin
 from app.db.database import get_db
 from app.models.models import User, Rate, VehicleType
@@ -50,6 +51,7 @@ async def get_rate(
 @router.post("/", response_model=RateOut, status_code=status.HTTP_201_CREATED)
 async def create_rate(
     rate_data: RateCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -70,6 +72,17 @@ async def create_rate(
     db.commit()
     db.refresh(rate)
 
+    log_action(
+        db,
+        user=current_user,
+        action="crear",
+        resource="tarifa",
+        resource_id=rate.id,
+        details=f"Se creó la tarifa '{rate.name}' para {rate.vehicle_type.value} a ${rate.price_per_minute}/min",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return rate
 
 
@@ -77,6 +90,7 @@ async def create_rate(
 async def update_rate(
     rate_id: int,
     rate_data: RateUpdate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -102,12 +116,24 @@ async def update_rate(
     db.commit()
     db.refresh(rate)
 
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="tarifa",
+        resource_id=rate.id,
+        details=f"Se actualizó la tarifa '{rate.name}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return rate
 
 
 @router.delete("/{rate_id}", response_model=MessageOut)
 async def delete_rate(
     rate_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -119,5 +145,16 @@ async def delete_rate(
 
     rate.is_active = False
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="desactivar",
+        resource="tarifa",
+        resource_id=rate.id,
+        details=f"Se desactivó la tarifa '{rate.name}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="Rate deactivated successfully")

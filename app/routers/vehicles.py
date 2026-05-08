@@ -1,8 +1,9 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
+from app.core.audit import log_action
 from app.core.auth import get_current_user, require_role, require_admin
 from app.db.database import get_db
 from app.models.models import User, UserRole, Vehicle, Blacklist
@@ -74,6 +75,7 @@ async def get_vehicle_by_plate(
 @router.post("/", response_model=VehicleOut, status_code=status.HTTP_201_CREATED)
 async def create_vehicle(
     vehicle_data: VehicleCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -100,6 +102,17 @@ async def create_vehicle(
     db.commit()
     db.refresh(vehicle)
 
+    log_action(
+        db,
+        user=current_user,
+        action="crear",
+        resource="vehículo",
+        resource_id=vehicle.id,
+        details=f"Se creó el vehículo con placa '{vehicle.plate}' tipo {vehicle.vehicle_type.value}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return vehicle
 
 
@@ -107,6 +120,7 @@ async def create_vehicle(
 async def update_vehicle(
     vehicle_id: int,
     vehicle_data: VehicleUpdate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -132,12 +146,24 @@ async def update_vehicle(
     db.commit()
     db.refresh(vehicle)
 
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="vehículo",
+        resource_id=vehicle.id,
+        details=f"Se actualizó el vehículo con placa '{vehicle.plate}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return vehicle
 
 
 @router.delete("/{vehicle_id}", response_model=MessageOut)
 async def delete_vehicle(
     vehicle_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -149,6 +175,17 @@ async def delete_vehicle(
 
     vehicle.is_active = False
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="desactivar",
+        resource="vehículo",
+        resource_id=vehicle.id,
+        details=f"Se desactivó el vehículo con placa '{vehicle.plate}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="Vehicle deactivated successfully")
 

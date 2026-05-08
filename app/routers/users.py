@@ -1,8 +1,10 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user, require_admin, get_password_hash
+from app.core.audit import log_action
 from app.db.database import get_db
 from app.models.models import User, UserRole, AuditLog
 from app.schemas.schemas import (
@@ -51,6 +53,7 @@ async def get_user(
 @router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: UserCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -76,6 +79,17 @@ async def create_user(
     db.commit()
     db.refresh(user)
 
+    log_action(
+        db,
+        user=current_user,
+        action="crear",
+        resource="usuario",
+        resource_id=user.id,
+        details=f"Se creó el usuario '{user.username}' con rol {user.role.value}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return user
 
 
@@ -83,6 +97,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -109,12 +124,24 @@ async def update_user(
     db.commit()
     db.refresh(user)
 
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="usuario",
+        resource_id=user.id,
+        details=f"Se actualizó el usuario '{user.username}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return user
 
 
 @router.delete("/{user_id}", response_model=MessageOut)
 async def delete_user(
     user_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -127,12 +154,24 @@ async def delete_user(
     user.is_active = False
     db.commit()
 
+    log_action(
+        db,
+        user=current_user,
+        action="desactivar",
+        resource="usuario",
+        resource_id=user.id,
+        details=f"Se desactivó el usuario '{user.username}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return MessageOut(detail="User deactivated successfully")
 
 
 @router.post("/{user_id}/activate", response_model=MessageOut)
 async def activate_user(
     user_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -144,6 +183,17 @@ async def activate_user(
 
     user.is_active = True
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="activar",
+        resource="usuario",
+        resource_id=user.id,
+        details=f"Se activó el usuario '{user.username}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="User activated successfully")
 
@@ -164,5 +214,14 @@ async def change_password(
 
     current_user.password_hash = get_password_hash(password_data.new_password)
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="cambiar_contraseña",
+        resource="usuario",
+        resource_id=current_user.id,
+        details=f"Cambio de contraseña para '{current_user.username}'",
+    )
 
     return MessageOut(detail="Password changed successfully")

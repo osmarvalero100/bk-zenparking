@@ -1,8 +1,9 @@
 from typing import Annotated
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
+from app.core.audit import log_action
 from app.core.auth import get_current_user, require_admin
 from app.db.database import get_db
 from app.models.models import User, Blacklist, Vehicle
@@ -48,6 +49,7 @@ async def get_blacklist_entry(
 @router.post("/", response_model=BlacklistOut, status_code=status.HTTP_201_CREATED)
 async def add_to_blacklist(
     blacklist_data: BlacklistCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -73,6 +75,16 @@ async def add_to_blacklist(
         existing.created_by = current_user.id
         db.commit()
         db.refresh(existing)
+        log_action(
+            db,
+            user=current_user,
+            action="reactivar",
+            resource="lista_negra",
+            resource_id=existing.id,
+            details=f"Se reactivó en lista negra el vehículo placa '{vehicle.plate}' - {existing.reason}",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
         return existing
 
     blacklist = Blacklist(
@@ -86,6 +98,17 @@ async def add_to_blacklist(
     db.commit()
     db.refresh(blacklist)
 
+    log_action(
+        db,
+        user=current_user,
+        action="agregar",
+        resource="lista_negra",
+        resource_id=blacklist.id,
+        details=f"Se agregó a lista negra el vehículo placa '{vehicle.plate}' - {blacklist.reason}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return blacklist
 
 
@@ -93,6 +116,7 @@ async def add_to_blacklist(
 async def update_blacklist(
     blacklist_id: int,
     blacklist_data: BlacklistUpdate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -112,12 +136,24 @@ async def update_blacklist(
     db.commit()
     db.refresh(blacklist)
 
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="lista_negra",
+        resource_id=blacklist.id,
+        details=f"Se actualizó entrada de lista negra",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return blacklist
 
 
 @router.delete("/{blacklist_id}", response_model=MessageOut)
 async def remove_from_blacklist(
     blacklist_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -129,5 +165,16 @@ async def remove_from_blacklist(
 
     blacklist.is_active = False
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="eliminar",
+        resource="lista_negra",
+        resource_id=blacklist.id,
+        details=f"Se eliminó de lista negra el vehículo",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="Vehicle removed from blacklist")

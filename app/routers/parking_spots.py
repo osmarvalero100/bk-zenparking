@@ -1,6 +1,8 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+
+from app.core.audit import log_action
 
 from app.core.auth import get_current_user, require_role, require_admin
 from app.db.database import get_db
@@ -106,6 +108,7 @@ async def get_spot(
 @router.post("/", response_model=ParkingSpotOut, status_code=status.HTTP_201_CREATED)
 async def create_spot(
     spot_data: ParkingSpotCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -133,6 +136,17 @@ async def create_spot(
     db.commit()
     db.refresh(spot)
 
+    log_action(
+        db,
+        user=current_user,
+        action="crear",
+        resource="celda",
+        resource_id=spot.id,
+        details=f"Se creó la celda '{spot.spot_number}' zona {spot.zone} para {spot.vehicle_type.value}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return spot
 
 
@@ -140,6 +154,7 @@ async def create_spot(
 async def update_spot(
     spot_id: int,
     spot_data: ParkingSpotUpdate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -165,12 +180,24 @@ async def update_spot(
     db.commit()
     db.refresh(spot)
 
+    log_action(
+        db,
+        user=current_user,
+        action="actualizar",
+        resource="celda",
+        resource_id=spot.id,
+        details=f"Se actualizó la celda '{spot.spot_number}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return spot
 
 
 @router.post("/{spot_id}/maintenance", response_model=MessageOut)
 async def set_spot_maintenance(
     spot_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -183,12 +210,24 @@ async def set_spot_maintenance(
     spot.status = SpotStatus.MAINTENANCE
     db.commit()
 
+    log_action(
+        db,
+        user=current_user,
+        action="mantenimiento",
+        resource="celda",
+        resource_id=spot.id,
+        details=f"Celda '{spot.spot_number}' puesta en mantenimiento",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return MessageOut(detail="Spot set to maintenance")
 
 
 @router.post("/{spot_id}/release", response_model=MessageOut)
 async def release_spot(
     spot_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -201,12 +240,24 @@ async def release_spot(
     spot.status = SpotStatus.FREE
     db.commit()
 
+    log_action(
+        db,
+        user=current_user,
+        action="liberar",
+        resource="celda",
+        resource_id=spot.id,
+        details=f"Celda '{spot.spot_number}' liberada",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return MessageOut(detail="Spot released successfully")
 
 
 @router.delete("/{spot_id}", response_model=MessageOut)
 async def delete_spot(
     spot_id: int,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(require_admin)],
 ):
@@ -218,5 +269,16 @@ async def delete_spot(
 
     db.delete(spot)
     db.commit()
+
+    log_action(
+        db,
+        user=current_user,
+        action="eliminar",
+        resource="celda",
+        resource_id=spot.id,
+        details=f"Se eliminó la celda '{spot.spot_number}'",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return MessageOut(detail="Spot deleted successfully")

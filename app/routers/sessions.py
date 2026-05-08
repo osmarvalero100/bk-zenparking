@@ -1,7 +1,9 @@
 from typing import Annotated
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+
+from app.core.audit import log_action
 from sqlalchemy import func
 
 from app.core.auth import get_current_user
@@ -248,6 +250,7 @@ async def get_session_by_ticket(
 )
 async def vehicle_entry(
     session_data: ParkingSessionCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -332,6 +335,17 @@ async def vehicle_entry(
     db.commit()
     db.refresh(session)
 
+    log_action(
+        db,
+        user=current_user,
+        action="entrada",
+        resource="sesión",
+        resource_id=session.id,
+        details=f"Entrada del vehículo placa '{session_data.plate.upper()}' - ticket {session.ticket_number} - celda {spot.spot_number}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
     return session
 
 
@@ -339,6 +353,7 @@ async def vehicle_entry(
 async def vehicle_exit(
     session_id: int,
     exit_data: ParkingSessionEnd,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -386,5 +401,16 @@ async def vehicle_exit(
 
     db.commit()
     db.refresh(session)
+
+    log_action(
+        db,
+        user=current_user,
+        action="salida",
+        resource="sesión",
+        resource_id=session.id,
+        details=f"Salida del vehículo ticket {session.ticket_number} - duración {duration} min - total ${total_amount:.0f}",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
 
     return session
