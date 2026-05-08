@@ -9,6 +9,7 @@ from sqlalchemy import func
 from app.core.auth import get_current_user
 from app.core.timezone import now as tz_now, localize
 from app.db.database import get_db
+from app.services.parking import calculate_parking_fee, compute_session_totals
 from app.models.models import (
     User,
     UserRole,
@@ -40,38 +41,6 @@ def generate_ticket_number():
     return (
         f"TKT{tz_now().strftime('%Y%m%d')}{''.join(random.choices(string.digits, k=6))}"
     )
-
-
-def calculate_parking_fee(
-    vehicle_type: VehicleType, duration_minutes: int, db: Session
-) -> float:
-    from app.models.models import Rate
-
-    rate = (
-        db.query(Rate)
-        .filter(Rate.vehicle_type == vehicle_type, Rate.is_active == True)
-        .filter((Rate.valid_from == None) | (Rate.valid_from <= tz_now()))
-        .filter((Rate.valid_until == None) | (Rate.valid_until >= tz_now()))
-        .first()
-    )
-
-    if not rate:
-        rate = db.query(Rate).filter(Rate.vehicle_type == vehicle_type).first()
-
-    if not rate:
-        default_rates = {
-            VehicleType.CAR: 150,
-            VehicleType.MOTORCYCLE: 100,
-            VehicleType.BICYCLE: 50,
-            VehicleType.DISABLED: 0,
-        }
-        return default_rates.get(vehicle_type, 150) * duration_minutes
-
-    billable_minutes = max(0, duration_minutes - rate.free_minutes)
-    if rate.maximum_minutes and duration_minutes > rate.maximum_minutes:
-        billable_minutes = rate.maximum_minutes - rate.free_minutes
-
-    return rate.price_per_minute * billable_minutes
 
 
 @router.get("/", response_model=list[ParkingSessionOut])
@@ -194,21 +163,9 @@ async def search_session(
             detail="No active session found",
         )
 
-    # Calculate duration and total_amount if session is active
     if session.exit_time is None:
-        now = tz_now()
-        duration = int((now - localize(session.entry_time)).total_seconds() / 60)
-        session.duration_minutes = duration
-
-        vehicle = db.query(Vehicle).filter(Vehicle.id == session.vehicle_id).first()
-        if vehicle and vehicle.is_resident:
-            session.total_amount = 0
-        elif vehicle:
-            session.total_amount = calculate_parking_fee(
-                vehicle.vehicle_type, duration, db
-            )
-        else:
-            session.total_amount = 0
+        _, total_amount = compute_session_totals(session, db)
+        session.total_amount = total_amount
 
     return session
 

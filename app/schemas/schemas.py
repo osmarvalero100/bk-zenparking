@@ -1,7 +1,9 @@
-from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict, computed_field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+
+from app.core.timezone import now as tz_now, localize
 
 
 class UserRole(str, Enum):
@@ -180,9 +182,15 @@ class ParkingSessionOut(BaseModel):
     ticket_number: str
     entry_time: datetime
     exit_time: Optional[datetime]
-    duration_minutes: Optional[int]
     total_amount: float
     payment_status: str
+
+    @computed_field
+    @property
+    def duration_minutes(self) -> int:
+        if self.exit_time:
+            return int((self.exit_time - self.entry_time).total_seconds() / 60)
+        return int((tz_now() - localize(self.entry_time)).total_seconds() / 60)
 
 
 class ParkingSessionEnd(BaseModel):
